@@ -1,4 +1,4 @@
-module github.com/hbakhtiyor/schnorr
+module github.com/ngchain/go-schnorr
 
 go 1.14
 
