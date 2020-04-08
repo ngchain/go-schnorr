@@ -7,12 +7,12 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/ngchain/secp256k1"
 )
 
 var (
 	// Curve is a KoblitzCurve which implements secp256k1.
-	Curve = btcec.S256()
+	Curve = secp256k1.S256()
 	// One holds a big integer of 1
 	One = new(big.Int).SetInt64(1)
 	// Two holds a big integer of 2

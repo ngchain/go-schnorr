@@ -3,6 +3,10 @@
 Go implementation of the Schnorr BIP
 =================
 
+Forked from https://github.com/hbakhtiyor/schnorr/commit/0082e255e23489233b36d9097630131d32f2f73f
+
+Get rid of pull the entire btcd.
+
 This is a Go implementation of the standard 64-byte Schnorr signature
 scheme over the elliptic curve *secp256k1*.
 
