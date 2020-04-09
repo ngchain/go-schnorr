@@ -1,12 +1,16 @@
 package schnorr
 
 import (
+	"bytes"
 	"errors"
 	"math/big"
 	"strings"
 	"testing"
 
 	"encoding/hex"
+
+	"github.com/ngchain/secp256k1"
+	"golang.org/x/crypto/sha3"
 )
 
 func TestSign(t *testing.T) {
@@ -354,4 +358,45 @@ func decodePrivateKey(d string, t *testing.T) *big.Int {
 		t.Fatalf("Unexpected error from new(big.Int).SetString(%s, 16)", d)
 	}
 	return privKey
+}
+
+func TestCombinePublicKey(t *testing.T) {
+	l := 3
+	privateKeys := make([]*secp256k1.PrivateKey, l)
+	publicKeys := make([]secp256k1.PublicKey, l)
+	ds := make([]*big.Int, l)
+	var err error
+	for i := range privateKeys {
+		privateKeys[i], err = secp256k1.GeneratePrivateKey()
+		if err != nil {
+			t.Log(err)
+		}
+
+		ds[i] = privateKeys[i].D
+		publicKeys[i] = *privateKeys[i].PubKey()
+	}
+
+	pk := CombinePublicKeys(publicKeys...)
+	text := "HelloWorld"
+
+	sign, err := AggregateSignatures(ds, sha3.Sum256([]byte(text)))
+	if err != nil {
+		t.Log(err)
+	}
+
+	var bPK [33]byte
+	copy(bPK[:], pk.SerializeCompressed())
+	if ok, _ := Verify(bPK, sha3.Sum256([]byte(text)), sign); !ok {
+		t.Log("combine publicKey failed")
+		t.Fail()
+	}
+}
+
+func TestMarshal(t *testing.T) {
+	k, _ := secp256k1.GeneratePrivateKey()
+	pk := k.PubKey()
+
+	if !bytes.Equal(Marshal(Curve, pk.X, pk.Y), pk.SerializeCompressed()) {
+		t.Fail()
+	}
 }

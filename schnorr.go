@@ -173,15 +173,15 @@ func AggregateSignatures(privateKeys []*big.Int, message [32]byte) ([64]byte, er
 		return sig, errors.New("privateKeys must be an array with one or more elements")
 	}
 
-	k0s := []*big.Int{}
+	k0s := make([]*big.Int, len(privateKeys))
 	Px, Py := new(big.Int), new(big.Int)
 	Rx, Ry := new(big.Int), new(big.Int)
-	for _, privateKey := range privateKeys {
-		if privateKey.Cmp(One) < 0 || privateKey.Cmp(new(big.Int).Sub(Curve.N, One)) > 0 {
+	for i := range privateKeys {
+		if privateKeys[i].Cmp(One) < 0 || privateKeys[i].Cmp(new(big.Int).Sub(Curve.N, One)) > 0 {
 			return sig, errors.New("the private key must be an integer in the range 1..n-1")
 		}
 
-		d := intToByte(privateKey)
+		d := intToByte(privateKeys[i])
 		k0i, err := deterministicGetK0(d, message)
 		if err != nil {
 			return sig, err
@@ -190,7 +190,7 @@ func AggregateSignatures(privateKeys []*big.Int, message [32]byte) ([64]byte, er
 		RiX, RiY := Curve.ScalarBaseMult(intToByte(k0i))
 		PiX, PiY := Curve.ScalarBaseMult(d)
 
-		k0s = append(k0s, k0i)
+		k0s[i] = k0i
 
 		Rx, Ry = Curve.Add(Rx, Ry, RiX, RiY)
 		Px, Py = Curve.Add(Px, Py, PiX, PiY)
@@ -198,17 +198,35 @@ func AggregateSignatures(privateKeys []*big.Int, message [32]byte) ([64]byte, er
 
 	rX := intToByte(Rx)
 	e := getE(Px, Py, rX, message)
-	s := new(big.Int).SetInt64(0)
+	s := new(big.Int)
 
-	for i, k0 := range k0s {
-		k := getK(Ry, k0)
-		k.Add(k, new(big.Int).Mul(e, privateKeys[i]))
+	for j := range k0s {
+		k := getK(Ry, k0s[j])
+		k.Add(k, new(big.Int).Mul(e, privateKeys[j]))
 		s.Add(s, k)
 	}
 
 	copy(sig[:32], rX)
 	copy(sig[32:], intToByte(s.Mod(s, Curve.N)))
 	return sig, nil
+}
+
+// CombinePublicKeys can combine public keys
+func CombinePublicKeys(pks ...secp256k1.PublicKey) *secp256k1.PublicKey {
+	if len(pks) == 0 {
+		return nil
+	}
+
+	if len(pks) == 1 {
+		return &pks[0]
+	}
+
+	x, y := pks[0].X, pks[0].Y
+	for i := 1; i < len(pks); i++ {
+		x, y = Curve.Add(x, y, pks[i].X, pks[i].Y)
+	}
+
+	return secp256k1.NewPublicKey(x, y)
 }
 
 func getE(Px, Py *big.Int, rX []byte, m [32]byte) *big.Int {
